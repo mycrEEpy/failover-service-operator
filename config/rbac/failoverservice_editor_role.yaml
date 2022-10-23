@@ -1,0 +1,31 @@
+# permissions for end users to edit failoverservices.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: failoverservice-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: failover-service-operator
+    app.kubernetes.io/part-of: failover-service-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: failoverservice-editor-role
+rules:
+- apiGroups:
+  - failover.mycreepy.github.io
+  resources:
+  - failoverservices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - failover.mycreepy.github.io
+  resources:
+  - failoverservices/status
+  verbs:
+  - get
