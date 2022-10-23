@@ -43,9 +43,9 @@ type FailoverServiceReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=failover.mycreepy.github.io,resources=failoverservices,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=failover.mycreepy.github.io,resources=failoverservices/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=failover.mycreepy.github.io,resources=failoverservices/finalizers,verbs=update
+//+kubebuilder:rbac:groups=mycreepy.github.io,resources=failoverservices,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=mycreepy.github.io,resources=failoverservices/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=mycreepy.github.io,resources=failoverservices/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

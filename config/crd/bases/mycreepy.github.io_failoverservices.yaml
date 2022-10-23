@@ -5,9 +5,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
-  name: failoverservices.failover.mycreepy.github.io
+  name: failoverservices.mycreepy.github.io
 spec:
-  group: failover.mycreepy.github.io
+  group: mycreepy.github.io
   names:
     kind: FailoverService
     listKind: FailoverServiceList

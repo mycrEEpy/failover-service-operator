@@ -12,7 +12,7 @@ metadata:
   name: failoverservice-editor-role
 rules:
 - apiGroups:
-  - failover.mycreepy.github.io
+  - mycreepy.github.io
   resources:
   - failoverservices
   verbs:
@@ -24,7 +24,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - failover.mycreepy.github.io
+  - mycreepy.github.io
   resources:
   - failoverservices/status
   verbs:
