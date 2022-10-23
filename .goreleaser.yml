@@ -1,7 +1,9 @@
 project_name: failover-service-operator
 
 builds:
-  - main: ./cmd/fos-manager
+  - id: fos-manager
+    main: ./cmd/fos-manager
+    binary: fos-manager
     env:
       - CGO_ENABLED=0
     goos:
@@ -19,6 +21,7 @@ dockers:
       - ghcr.io/mycreepy/{{ .ProjectName }}:latest-amd64
     build_flag_templates:
       - "--platform=linux/amd64"
+      - "--build-arg=BINARY_PATH=dist/fos-manager_linux_amd64_v1/fos-manager"
       - "--label=org.opencontainers.image.created={{.Date}}"
       - "--label=org.opencontainers.image.title={{.ProjectName}}"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
@@ -32,6 +35,7 @@ dockers:
       - ghcr.io/mycreepy/{{ .ProjectName }}:latest-arm64v8
     build_flag_templates:
       - "--platform=linux/arm64/v8"
+      - "--build-arg=BINARY_PATH=dist/fos-manager_linux_arm64/fos-manager"
       - "--label=org.opencontainers.image.created={{.Date}}"
       - "--label=org.opencontainers.image.title={{.ProjectName}}"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
