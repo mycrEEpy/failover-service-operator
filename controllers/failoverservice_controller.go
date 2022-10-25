@@ -19,13 +19,17 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	kubeErrors "k8s.io/apimachinery/pkg/api/errors"
+	apiMeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,8 +38,13 @@ import (
 	failoverv1alpha1 "github.com/mycreepy/failover-service-operator/api/v1alpha1"
 )
 
-const serviceDefaultSuffix = "-failover"
-const statefulsetPodNameLabel = "statefulset.kubernetes.io/pod-name"
+const (
+	ServiceDefaultSuffix     = "-failover"
+	StatefulsetPodNameLabel  = "statefulset.kubernetes.io/pod-name"
+	ConditionTypeReady       = "Ready"
+	ConditionReasonSucceeded = "ReconciliationSucceeded"
+	ConditionReasonFailed    = "ReconciliationFailed"
+)
 
 // FailoverServiceReconciler reconciles a FailoverService object
 type FailoverServiceReconciler struct {
@@ -61,40 +70,91 @@ func (r *FailoverServiceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	err := r.Get(ctx, req.NamespacedName, &fos)
 	if err != nil {
-		return ctrl.Result{}, err
+		if kubeErrors.IsNotFound(err) {
+			logger.Info("FailoverService has been deleted")
+			return ctrl.Result{}, nil
+		}
+
+		return ctrl.Result{RequeueAfter: time.Second * 10}, err
 	}
+
+	original := fos.DeepCopy()
 
 	if len(fos.Status.ActiveTarget) > 0 {
 		err = r.reconcileActiveTarget(ctx, fos)
 		if err != nil {
-			return ctrl.Result{}, err
+			apiMeta.SetStatusCondition(&fos.Status.Conditions, metav1.Condition{
+				Type:    ConditionTypeReady,
+				Status:  metav1.ConditionFalse,
+				Reason:  ConditionReasonFailed,
+				Message: fmt.Sprintf("failed to reconcile active target: %s", err),
+			})
+
+			err = r.Status().Patch(ctx, &fos, client.MergeFrom(original))
+			if err != nil {
+				logger.Error(err, "status update failed")
+			}
+
+			return ctrl.Result{RequeueAfter: time.Second * 10}, err
 		}
 
 		return ctrl.Result{}, nil
 	}
 
-	err = r.createNewService(ctx, fos)
+	svc, err := r.createNewService(ctx, fos)
 	if err != nil {
-		return ctrl.Result{}, err
+		apiMeta.SetStatusCondition(&fos.Status.Conditions, metav1.Condition{
+			Type:    ConditionTypeReady,
+			Status:  metav1.ConditionFalse,
+			Reason:  ConditionReasonFailed,
+			Message: fmt.Sprintf("failed to create new service: %s", err),
+		})
+
+		err = r.Status().Patch(ctx, &fos, client.MergeFrom(original))
+		if err != nil {
+			logger.Error(err, "status update failed")
+		}
+
+		return ctrl.Result{RequeueAfter: time.Second * 10}, err
 	}
+
+	logger.Info("created new service", "service", svc)
+
+	if !apiMeta.IsStatusConditionTrue(fos.Status.Conditions, ConditionTypeReady) {
+		apiMeta.SetStatusCondition(&fos.Status.Conditions, metav1.Condition{
+			Type:   ConditionTypeReady,
+			Status: metav1.ConditionTrue,
+			Reason: ConditionReasonSucceeded,
+		})
+
+		err = r.Status().Patch(ctx, &fos, client.MergeFrom(original))
+		if err != nil {
+			logger.Error(err, "status patch failed")
+			return ctrl.Result{RequeueAfter: time.Second * 10}, err
+		}
+
+		return ctrl.Result{}, nil
+	}
+
+	logger.V(5).Info("finished reconciliation")
 
 	return ctrl.Result{}, nil
 }
 
-func (r *FailoverServiceReconciler) createNewService(ctx context.Context, fos failoverv1alpha1.FailoverService) error {
+func (r *FailoverServiceReconciler) createNewService(ctx context.Context, fos failoverv1alpha1.FailoverService) (*types.NamespacedName, error) {
 	hls, err := r.getHeadlessService(ctx, fos.Namespace, fos.Spec.HeadlessServiceName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	eps, err := r.getEndpointSliceFromHeadlessService(ctx, fos.Namespace, fos.Spec.HeadlessServiceName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	target, err := r.findNextTarget(eps)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	svc := corev1.Service{
@@ -117,20 +177,28 @@ func (r *FailoverServiceReconciler) createNewService(ctx context.Context, fos fa
 			Type:  corev1.ServiceTypeClusterIP,
 			Ports: hls.Spec.Ports,
 			Selector: map[string]string{
-				statefulsetPodNameLabel: target,
+				StatefulsetPodNameLabel: target,
 			},
 		},
 	}
 
 	err = r.Create(ctx, &svc)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	fos.Status.ActiveTarget = target
 	fos.Status.LastTransition = metav1.Now()
 
-	return r.Status().Update(ctx, &fos)
+	err = r.Status().Update(ctx, &fos)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.NamespacedName{
+		Namespace: svc.Namespace,
+		Name:      svc.Name,
+	}, nil
 }
 
 func (r *FailoverServiceReconciler) getHeadlessService(ctx context.Context, ns, hls string) (corev1.Service, error) {
@@ -232,7 +300,7 @@ func (r *FailoverServiceReconciler) setTarget(ctx context.Context, fos failoverv
 	}
 
 	svc.Spec.Selector = map[string]string{
-		statefulsetPodNameLabel: target,
+		StatefulsetPodNameLabel: target,
 	}
 
 	err = r.Update(ctx, &svc)
@@ -270,7 +338,7 @@ func (r *FailoverServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func generateServiceName(fos failoverv1alpha1.FailoverService) string {
-	serviceName := fos.Name + serviceDefaultSuffix
+	serviceName := fos.Name + ServiceDefaultSuffix
 	if len(fos.Spec.ServiceName) > 0 {
 		serviceName = fos.Spec.ServiceName
 	}

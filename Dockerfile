@@ -3,6 +3,6 @@
 FROM gcr.io/distroless/static:nonroot
 ARG BINARY_PATH
 WORKDIR /
-COPY $BINARY_PATH .
+COPY $BINARY_PATH fos-manager
 USER 65532:65532
 ENTRYPOINT ["/fos-manager"]

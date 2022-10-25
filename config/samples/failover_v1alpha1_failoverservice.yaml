@@ -1,6 +1,6 @@
 apiVersion: mycreepy.github.io/v1alpha1
 kind: FailoverService
 metadata:
-  name: failoverservice-sample
+  name: sample
 spec:
-  headlessServiceName: example
+  headlessServiceName: sample

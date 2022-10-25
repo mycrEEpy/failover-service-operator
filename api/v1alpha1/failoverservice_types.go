@@ -37,12 +37,16 @@ type FailoverServiceStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	// TODO: write docs
 
-	ActiveTarget   string      `json:"activeTarget,omitempty"`
-	LastTransition metav1.Time `json:"lastTransition,omitempty"`
+	ActiveTarget   string             `json:"activeTarget,omitempty"`
+	LastTransition metav1.Time        `json:"lastTransition,omitempty"`
+	Conditions     []metav1.Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="target",type=string,JSONPath=`.status.activeTarget`
+//+kubebuilder:printcolumn:name="transition",type=date,JSONPath=`.status.lastTransition`
+//+kubebuilder:printcolumn:name="age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // FailoverService is the Schema for the failoverservices API
 type FailoverService struct {

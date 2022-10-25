@@ -8,6 +8,8 @@ spec:
     matchLabels:
       app.kubernetes.io/name: fos-manager
   replicas: 1
+  strategy:
+    type: Recreate
   template:
     metadata:
       annotations:
@@ -35,11 +37,14 @@ spec:
           type: RuntimeDefault
       containers:
       - command:
-        - /manager
+        - /fos-manager
         args:
         - --leader-elect
         image: controller:latest
         name: manager
+        ports:
+        - name: metrics
+          containerPort: 8080
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

@@ -113,7 +113,7 @@ tidy: ## Run go mod tidy against code.
 
 .PHONY: build
 build: generate fmt vet ## Build manager binary.
-	go build -o bin/manager ./cmd/fos-manager/main.go
+	CGO_ENABLED=0 go build -o bin/fos-manager ./cmd/fos-manager/main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
@@ -127,8 +127,8 @@ release: generate fmt vet ## Release manager binary.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
-docker-build: test ## Build docker image with the manager.
-	docker build -t ${IMG} .
+docker-build: build ## Build docker image with the manager.
+	docker build -t ${IMG} --build-arg=BINARY_PATH=bin/fos-manager .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.

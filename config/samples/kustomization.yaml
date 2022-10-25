@@ -2,3 +2,4 @@
 resources:
 - failover_v1alpha1_failoverservice.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
+- sample-app.yaml
