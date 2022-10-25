@@ -44,6 +44,7 @@ type FailoverServiceStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 //+kubebuilder:printcolumn:name="target",type=string,JSONPath=`.status.activeTarget`
 //+kubebuilder:printcolumn:name="transition",type=date,JSONPath=`.status.lastTransition`
 //+kubebuilder:printcolumn:name="age",type=date,JSONPath=`.metadata.creationTimestamp`
