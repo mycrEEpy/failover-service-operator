@@ -12,6 +12,8 @@ spec:
     kind: FailoverService
     listKind: FailoverServiceList
     plural: failoverservices
+    shortNames:
+    - fos
     singular: failoverservice
   scope: Namespaced
   versions:

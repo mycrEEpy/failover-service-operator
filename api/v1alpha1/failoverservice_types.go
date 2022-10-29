@@ -43,6 +43,7 @@ type FailoverServiceStatus struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:scope="Namespaced",shortName="fos"
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 //+kubebuilder:printcolumn:name="target",type=string,JSONPath=`.status.activeTarget`
