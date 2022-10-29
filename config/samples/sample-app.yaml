@@ -27,7 +27,12 @@ spec:
     spec:
       containers:
       - name: sample
-        image: k8s.gcr.io/nginx-slim:0.8
+        image: k8s.gcr.io/nginx-slim:0.27
         ports:
         - containerPort: 80
           name: web
+        readinessProbe:
+          httpGet:
+            port: web
+            path: /
+          initialDelaySeconds: 30

@@ -6,6 +6,20 @@ metadata:
   name: fos-manager
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - create
+  - get
+  - patch
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - list
+- apiGroups:
   - mycreepy.github.io
   resources:
   - failoverservices

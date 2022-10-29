@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	failoverv1alpha1 "github.com/mycreepy/failover-service-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	kubeErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -30,12 +31,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	failoverv1alpha1 "github.com/mycreepy/failover-service-operator/api/v1alpha1"
 )
 
 const (
@@ -55,6 +55,73 @@ type FailoverServiceReconciler struct {
 //+kubebuilder:rbac:groups=mycreepy.github.io,resources=failoverservices,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=mycreepy.github.io,resources=failoverservices/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=mycreepy.github.io,resources=failoverservices/finalizers,verbs=update
+//+kubebuilder:rbac:groups="",resources=services,verbs=get;create;patch
+//+kubebuilder:rbac:groups=discovery.k8s.io,resources=endpointslices,verbs=list
+
+// FailoverBusyLoop will check all FailoverServices each interval.
+func (r *FailoverServiceReconciler) FailoverBusyLoop(ctx context.Context, interval time.Duration) {
+	logger := log.FromContext(ctx)
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			list := failoverv1alpha1.FailoverServiceList{}
+
+			err := r.List(ctx, &list)
+			if err != nil {
+				logger.Error(err, "failed to list FailoverServices")
+				continue
+			}
+
+			for _, fos := range list.Items {
+				// Only check ready objects
+				if !apiMeta.IsStatusConditionTrue(fos.Status.Conditions, ConditionTypeReady) {
+					continue
+				}
+
+				// TODO: ctx does not have a proper logger
+				_, err = r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{
+					Namespace: fos.Namespace,
+					Name:      fos.Name,
+				}})
+				if err != nil {
+					logger.Error(err, "reconcile failed", "namespace", fos.Namespace, "name", fos.Name)
+				}
+			}
+		}
+	}
+}
+
+// ReconcileAll will call Reconcile on all FailoverServices.
+func (r *FailoverServiceReconciler) ReconcileAll(ctx context.Context) error {
+	logger := log.FromContext(ctx)
+
+	fosList := failoverv1alpha1.FailoverServiceList{}
+
+	err := r.List(ctx, &fosList)
+	if err != nil {
+		return err
+	}
+
+	for _, fos := range fosList.Items {
+		// TODO: ctx does not have a proper logger
+		_, err = r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{
+			Namespace: fos.Namespace,
+			Name:      fos.Name,
+		},
+		})
+		if err != nil {
+			logger.Error(err, "initial reconcile failed", "namespace", fos.Namespace, "name", fos.Name)
+		}
+	}
+
+	return nil
+}
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -81,7 +148,7 @@ func (r *FailoverServiceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	original := fos.DeepCopy()
 
 	if len(fos.Status.ActiveTarget) > 0 {
-		err = r.reconcileActiveTarget(ctx, fos)
+		nextTarget, err := r.reconcileActiveTarget(ctx, fos)
 		if err != nil {
 			apiMeta.SetStatusCondition(&fos.Status.Conditions, metav1.Condition{
 				Type:    ConditionTypeReady,
@@ -96,6 +163,10 @@ func (r *FailoverServiceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			}
 
 			return ctrl.Result{RequeueAfter: time.Second * 10}, err
+		}
+
+		if nextTarget != fos.Status.ActiveTarget {
+			logger.Info("new target", "target", nextTarget)
 		}
 
 		return ctrl.Result{}, nil
@@ -118,7 +189,7 @@ func (r *FailoverServiceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{RequeueAfter: time.Second * 10}, err
 	}
 
-	logger.Info("created new service", "service", svc)
+	logger.Info("new service created", "serviceNamespace", svc.Namespace, "serviceName", svc.Name)
 
 	if !apiMeta.IsStatusConditionTrue(fos.Status.Conditions, ConditionTypeReady) {
 		apiMeta.SetStatusCondition(&fos.Status.Conditions, metav1.Condition{
@@ -136,18 +207,16 @@ func (r *FailoverServiceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, nil
 	}
 
-	logger.V(5).Info("finished reconciliation")
-
 	return ctrl.Result{}, nil
 }
 
-func (r *FailoverServiceReconciler) createNewService(ctx context.Context, fos failoverv1alpha1.FailoverService) (*types.NamespacedName, error) {
+func (r *FailoverServiceReconciler) createNewService(ctx context.Context, fos failoverv1alpha1.FailoverService) (*corev1.Service, error) {
 	hls, err := r.getHeadlessService(ctx, fos.Namespace, fos.Spec.HeadlessServiceName)
 	if err != nil {
 		return nil, err
 	}
 
-	eps, err := r.getEndpointSliceFromHeadlessService(ctx, fos.Namespace, fos.Spec.HeadlessServiceName)
+	eps, err := r.getEndpointSliceFromService(ctx, fos.Namespace, fos.Spec.HeadlessServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -187,18 +256,18 @@ func (r *FailoverServiceReconciler) createNewService(ctx context.Context, fos fa
 		return nil, err
 	}
 
+	original := fos.DeepCopy()
+
 	fos.Status.ActiveTarget = target
 	fos.Status.LastTransition = metav1.Now()
 
-	err = r.Status().Update(ctx, &fos)
+	// TODO: if the patch fails we have a deadlock because the service is already created no active target has been set
+	err = r.Status().Patch(ctx, &fos, client.MergeFrom(original))
 	if err != nil {
 		return nil, err
 	}
 
-	return &types.NamespacedName{
-		Namespace: svc.Namespace,
-		Name:      svc.Name,
-	}, nil
+	return &svc, nil
 }
 
 func (r *FailoverServiceReconciler) getHeadlessService(ctx context.Context, ns, hls string) (corev1.Service, error) {
@@ -217,22 +286,27 @@ func (r *FailoverServiceReconciler) getHeadlessService(ctx context.Context, ns, 
 	return svc, nil
 }
 
-func (r *FailoverServiceReconciler) reconcileActiveTarget(ctx context.Context, fos failoverv1alpha1.FailoverService) error {
-	eps, err := r.getEndpointSliceFromHeadlessService(ctx, fos.Namespace, fos.Spec.HeadlessServiceName)
+func (r *FailoverServiceReconciler) reconcileActiveTarget(ctx context.Context, fos failoverv1alpha1.FailoverService) (string, error) {
+	eps, err := r.getEndpointSliceFromService(ctx, fos.Namespace, fos.Spec.HeadlessServiceName)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if r.isActiveTargetReady(fos.Status.ActiveTarget, eps) {
-		return nil
+		return fos.Status.ActiveTarget, nil
 	}
 
 	nextTarget, err := r.findNextTarget(eps)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return r.setTarget(ctx, fos, nextTarget)
+	err = r.setTarget(ctx, fos, nextTarget)
+	if err != nil {
+		return "", err
+	}
+
+	return nextTarget, nil
 }
 
 func (r *FailoverServiceReconciler) isActiveTargetReady(activeTarget string, eps discoveryv1.EndpointSlice) bool {
@@ -267,10 +341,10 @@ func (r *FailoverServiceReconciler) findNextTarget(eps discoveryv1.EndpointSlice
 	return nextTarget, nil
 }
 
-func (r *FailoverServiceReconciler) getEndpointSliceFromHeadlessService(ctx context.Context, ns string, hls string) (discoveryv1.EndpointSlice, error) {
+func (r *FailoverServiceReconciler) getEndpointSliceFromService(ctx context.Context, ns string, svc string) (discoveryv1.EndpointSlice, error) {
 	list := discoveryv1.EndpointSliceList{}
 
-	req, err := labels.NewRequirement("kubernetes.io/service-name", selection.Equals, []string{hls})
+	req, err := labels.NewRequirement("kubernetes.io/service-name", selection.Equals, []string{svc})
 	if err != nil {
 		return discoveryv1.EndpointSlice{}, err
 	}
@@ -278,9 +352,19 @@ func (r *FailoverServiceReconciler) getEndpointSliceFromHeadlessService(ctx cont
 	selector := labels.NewSelector()
 	selector = selector.Add(*req)
 
-	err = r.List(ctx, &list, &client.ListOptions{
-		LabelSelector: selector,
-		Namespace:     ns,
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	err = wait.PollImmediateUntilWithContext(timeoutCtx, 2*time.Second, func(ctx context.Context) (bool, error) {
+		listErr := r.List(ctx, &list, &client.ListOptions{
+			LabelSelector: selector,
+			Namespace:     ns,
+		})
+		if listErr != nil {
+			return false, nil
+		}
+
+		return true, nil
 	})
 	if err != nil {
 		return discoveryv1.EndpointSlice{}, err
@@ -299,19 +383,23 @@ func (r *FailoverServiceReconciler) setTarget(ctx context.Context, fos failoverv
 		return err
 	}
 
+	originalSvc := svc.DeepCopy()
+
 	svc.Spec.Selector = map[string]string{
 		StatefulsetPodNameLabel: target,
 	}
 
-	err = r.Update(ctx, &svc)
+	err = r.Patch(ctx, &svc, client.MergeFrom(originalSvc))
 	if err != nil {
 		return err
 	}
 
+	originalFos := fos.DeepCopy()
+
 	fos.Status.ActiveTarget = target
 	fos.Status.LastTransition = metav1.Now()
 
-	return r.Status().Update(ctx, &fos)
+	return r.Status().Patch(ctx, &fos, client.MergeFrom(originalFos))
 }
 
 func (r *FailoverServiceReconciler) getServiceFromFailoverService(ctx context.Context, fos failoverv1alpha1.FailoverService) (corev1.Service, error) {
