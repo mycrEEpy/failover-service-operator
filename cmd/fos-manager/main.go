@@ -114,6 +114,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// TODO: rewrite using mgr.Add()
 	go func() {
 		time.Sleep(5 * time.Second)
 
