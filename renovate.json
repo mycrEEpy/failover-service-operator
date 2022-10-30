@@ -15,5 +15,27 @@
       "groupName": "k8s.io",
       "allowedVersions": "<=0.25"
     }
+  ],
+  "regexManagers": [
+    {
+      "fileMatch": ["^Makefile$"],
+      "matchStrings": ["ENVTEST_K8S_VERSION = (?<currentValue>.*?)\\n"],
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depNameTemplate": "kubernetes/kubernetes",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "fileMatch": ["^Makefile$"],
+      "matchStrings": ["KUSTOMIZE_VERSION ?= (?<currentValue>.*?)\\n"],
+      "extractVersionTemplate": "^kustomize/(?<version>.*)$",
+      "depNameTemplate": "kubernetes-sigs/kustomize",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "fileMatch": ["^Makefile$"],
+      "matchStrings": ["CONTROLLER_TOOLS_VERSION ?= (?<currentValue>.*?)\\n"],
+      "depNameTemplate": "kubernetes-sigs/controller-tools",
+      "datasourceTemplate": "github-releases"
+    }
   ]
 }
