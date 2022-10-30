@@ -26,14 +26,14 @@
     },
     {
       "fileMatch": ["^Makefile$"],
-      "matchStrings": ["KUSTOMIZE_VERSION ?= (?<currentValue>.*?)\\n"],
+      "matchStrings": ["KUSTOMIZE_VERSION \\?= (?<currentValue>.*?)\\n"],
       "extractVersionTemplate": "^kustomize/(?<version>.*)$",
       "depNameTemplate": "kubernetes-sigs/kustomize",
       "datasourceTemplate": "github-releases"
     },
     {
       "fileMatch": ["^Makefile$"],
-      "matchStrings": ["CONTROLLER_TOOLS_VERSION ?= (?<currentValue>.*?)\\n"],
+      "matchStrings": ["CONTROLLER_TOOLS_VERSION \\?= (?<currentValue>.*?)\\n"],
       "depNameTemplate": "kubernetes-sigs/controller-tools",
       "datasourceTemplate": "github-releases"
     }
