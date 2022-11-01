@@ -5,40 +5,22 @@
 // TODO(user): An in-depth paragraph about your project and overview of use
 
 ## Getting Started
-You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
-**Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
-
-### Running on the cluster
-1. Install Instances of Custom Resources:
+1. Generate the operator manifest:
 
 ```sh
-kubectl apply -f config/samples/
+make kustomize-build
 ```
 
-2. Build and push your image to the location specified by `IMG`:
-	
-```sh
-make docker-build docker-push IMG=<some-registry>/failover-service-operator:tag
-```
-	
-3. Deploy the controller to the cluster with the image specified by `IMG`:
+2. Deploy the operator:
 
 ```sh
-make deploy IMG=<some-registry>/failover-service-operator:tag
+kubectl apply -f dist/deploy.yaml
 ```
 
-### Uninstall CRDs
-To delete the CRDs from the cluster:
+3. Optionally deploy the samples:
 
 ```sh
-make uninstall
-```
-
-### Undeploy controller
-UnDeploy the controller to the cluster:
-
-```sh
-make undeploy
+kubectl apply -k config/samples/
 ```
 
 ## Contributing
