@@ -49,7 +49,8 @@ const (
 // FailoverServiceReconciler reconciles a FailoverService object
 type FailoverServiceReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Interval time.Duration
 }
 
 //+kubebuilder:rbac:groups=mycreepy.github.io,resources=failoverservices,verbs=get;list;watch;create;update;patch;delete
@@ -58,67 +59,21 @@ type FailoverServiceReconciler struct {
 //+kubebuilder:rbac:groups="",resources=services,verbs=get;create;patch
 //+kubebuilder:rbac:groups=discovery.k8s.io,resources=endpointslices,verbs=list
 
-// FailoverBusyLoop will check all FailoverServices each interval.
-func (r *FailoverServiceReconciler) FailoverBusyLoop(ctx context.Context, interval time.Duration) {
-	logger := log.FromContext(ctx)
-
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			list := failoverv1alpha1.FailoverServiceList{}
-
-			err := r.List(ctx, &list)
-			if err != nil {
-				logger.Error(err, "failed to list FailoverServices")
-				continue
-			}
-
-			for _, fos := range list.Items {
-				// Only check ready objects
-				if !apiMeta.IsStatusConditionTrue(fos.Status.Conditions, ConditionTypeReady) {
-					continue
-				}
-
-				// TODO: ctx does not have a proper logger
-				_, err = r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{
-					Namespace: fos.Namespace,
-					Name:      fos.Name,
-				}})
-				if err != nil {
-					logger.Error(err, "reconcile failed", "namespace", fos.Namespace, "name", fos.Name)
-				}
-			}
-		}
-	}
+// SetupWithManager sets up the controller with the Manager.
+func (r *FailoverServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&failoverv1alpha1.FailoverService{}).
+		Complete(r)
 }
 
-// ReconcileAll will call Reconcile on all FailoverServices.
-func (r *FailoverServiceReconciler) ReconcileAll(ctx context.Context) error {
-	logger := log.FromContext(ctx)
-
-	fosList := failoverv1alpha1.FailoverServiceList{}
-
-	err := r.List(ctx, &fosList)
+// Start will reconcile all FailoverServices and will start the busy loop.
+func (r *FailoverServiceReconciler) Start(ctx context.Context) error {
+	err := r.reconcileAll(ctx)
 	if err != nil {
 		return err
 	}
 
-	for _, fos := range fosList.Items {
-		// TODO: ctx does not have a proper logger
-		_, err = r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{
-			Namespace: fos.Namespace,
-			Name:      fos.Name,
-		},
-		})
-		if err != nil {
-			logger.Error(err, "initial reconcile failed", "namespace", fos.Namespace, "name", fos.Name)
-		}
-	}
+	r.runBusyLoop(ctx, r.Interval)
 
 	return nil
 }
@@ -210,6 +165,71 @@ func (r *FailoverServiceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	return ctrl.Result{}, nil
 }
 
+// reconcileAll will call Reconcile on all FailoverServices.
+func (r *FailoverServiceReconciler) reconcileAll(ctx context.Context) error {
+	logger := log.FromContext(ctx)
+
+	fosList := failoverv1alpha1.FailoverServiceList{}
+
+	err := r.List(ctx, &fosList)
+	if err != nil {
+		return err
+	}
+
+	for _, fos := range fosList.Items {
+		// TODO: ctx does not have a proper logger
+		_, err = r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{
+			Namespace: fos.Namespace,
+			Name:      fos.Name,
+		},
+		})
+		if err != nil {
+			logger.Error(err, "initial reconcile failed", "namespace", fos.Namespace, "name", fos.Name)
+		}
+	}
+
+	return nil
+}
+
+// runBusyLoop will check all FailoverServices each interval.
+func (r *FailoverServiceReconciler) runBusyLoop(ctx context.Context, interval time.Duration) {
+	logger := log.FromContext(ctx)
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			list := failoverv1alpha1.FailoverServiceList{}
+
+			err := r.List(ctx, &list)
+			if err != nil {
+				logger.Error(err, "failed to list FailoverServices")
+				continue
+			}
+
+			for _, fos := range list.Items {
+				// Only check ready objects
+				if !apiMeta.IsStatusConditionTrue(fos.Status.Conditions, ConditionTypeReady) {
+					continue
+				}
+
+				// TODO: ctx does not have a proper logger
+				_, err = r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{
+					Namespace: fos.Namespace,
+					Name:      fos.Name,
+				}})
+				if err != nil {
+					logger.Error(err, "reconcile failed", "namespace", fos.Namespace, "name", fos.Name)
+				}
+			}
+		}
+	}
+}
+
 func (r *FailoverServiceReconciler) createNewService(ctx context.Context, fos failoverv1alpha1.FailoverService) (*corev1.Service, error) {
 	hls, err := r.getHeadlessService(ctx, fos.Namespace, fos.Spec.HeadlessServiceName)
 	if err != nil {
@@ -261,7 +281,7 @@ func (r *FailoverServiceReconciler) createNewService(ctx context.Context, fos fa
 	fos.Status.ActiveTarget = target
 	fos.Status.LastTransition = metav1.Now()
 
-	// TODO: if the patch fails we have a deadlock because the service is already created no active target has been set
+	// TODO: if the patch fails we have a deadlock because the service is already created and no active target has been set
 	err = r.Status().Patch(ctx, &fos, client.MergeFrom(original))
 	if err != nil {
 		return nil, err
@@ -416,13 +436,6 @@ func (r *FailoverServiceReconciler) getServiceFromFailoverService(ctx context.Co
 	}
 
 	return svc, nil
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *FailoverServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&failoverv1alpha1.FailoverService{}).
-		Complete(r)
 }
 
 func generateServiceName(fos failoverv1alpha1.FailoverService) string {

@@ -95,39 +95,40 @@ func main() {
 	}
 
 	r := &controllers.FailoverServiceReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Interval: interval,
 	}
 
-	if err = r.SetupWithManager(mgr); err != nil {
+	err = r.SetupWithManager(mgr)
+	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FailoverService")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
 
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+	err = mgr.Add(r)
+	if err != nil {
+		setupLog.Error(err, "unable to add reconciler to manager")
+		os.Exit(1)
+	}
+
+	err = mgr.AddHealthzCheck("healthz", healthz.Ping)
+	if err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
 	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+
+	err = mgr.AddReadyzCheck("readyz", healthz.Ping)
+	if err != nil {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
 
-	// TODO: rewrite using mgr.Add()
-	go func() {
-		time.Sleep(5 * time.Second)
-
-		reconcileErr := r.ReconcileAll(ctx)
-		if err != nil {
-			setupLog.Error(reconcileErr, "failed to reconcile during setup")
-		}
-
-		r.FailoverBusyLoop(ctx, interval)
-	}()
-
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+
+	err = mgr.Start(ctrl.SetupSignalHandler())
+	if err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
