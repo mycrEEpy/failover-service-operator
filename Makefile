@@ -47,7 +47,7 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 endif
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= ghcr.io/mycreepy/failover-service-operator:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.25.0
 
@@ -153,9 +153,17 @@ docker-buildx: test ## Build and push docker image for the manager for cross-pla
 
 ##@ Deployment
 
+# Output file for kustomize build
+MANIFEST_FILE ?= dist/deploy.yaml
+
 ifndef ignore-not-found
   ignore-not-found = false
 endif
+
+.PHONY: kustomize-build
+kustomize-build: manifests kustomize
+	mkdir -p dist
+	$(KUSTOMIZE) build config/default > ${MANIFEST_FILE}
 
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
