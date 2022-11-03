@@ -50,12 +50,19 @@ spec:
           spec:
             description: FailoverServiceSpec defines the desired state of FailoverService
             properties:
-              headlessServiceName:
-                type: string
-              serviceName:
-                type: string
+              service:
+                description: ServiceConfig defines the configuration for the services
+                  which are managed by the FailoverService.
+                properties:
+                  name:
+                    type: string
+                  suffix:
+                    type: string
+                required:
+                - name
+                type: object
             required:
-            - headlessServiceName
+            - service
             type: object
           status:
             description: FailoverServiceStatus defines the observed state of FailoverService

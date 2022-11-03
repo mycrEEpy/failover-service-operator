@@ -3,4 +3,5 @@ kind: FailoverService
 metadata:
   name: sample
 spec:
-  headlessServiceName: sample
+  service:
+    name: sample

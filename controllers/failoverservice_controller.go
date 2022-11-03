@@ -231,12 +231,12 @@ func (r *FailoverServiceReconciler) runBusyLoop(ctx context.Context, interval ti
 }
 
 func (r *FailoverServiceReconciler) createNewService(ctx context.Context, fos failoverv1alpha1.FailoverService) (*corev1.Service, error) {
-	hls, err := r.getHeadlessService(ctx, fos.Namespace, fos.Spec.HeadlessServiceName)
+	hls, err := r.getHeadlessService(ctx, fos.Namespace, fos.Spec.Service.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	eps, err := r.getEndpointSliceFromService(ctx, fos.Namespace, fos.Spec.HeadlessServiceName)
+	eps, err := r.getEndpointSliceFromService(ctx, fos.Namespace, fos.Spec.Service.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -307,7 +307,7 @@ func (r *FailoverServiceReconciler) getHeadlessService(ctx context.Context, ns, 
 }
 
 func (r *FailoverServiceReconciler) reconcileActiveTarget(ctx context.Context, fos failoverv1alpha1.FailoverService) (string, error) {
-	eps, err := r.getEndpointSliceFromService(ctx, fos.Namespace, fos.Spec.HeadlessServiceName)
+	eps, err := r.getEndpointSliceFromService(ctx, fos.Namespace, fos.Spec.Service.Name)
 	if err != nil {
 		return "", err
 	}
@@ -440,8 +440,8 @@ func (r *FailoverServiceReconciler) getServiceFromFailoverService(ctx context.Co
 
 func generateServiceName(fos failoverv1alpha1.FailoverService) string {
 	serviceName := fos.Name + ServiceDefaultSuffix
-	if len(fos.Spec.ServiceName) > 0 {
-		serviceName = fos.Spec.ServiceName
+	if len(fos.Spec.Service.Suffix) > 0 {
+		serviceName = fos.Name + fos.Spec.Service.Suffix
 	}
 
 	return serviceName

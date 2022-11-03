@@ -26,16 +26,19 @@ import (
 // FailoverServiceSpec defines the desired state of FailoverService
 type FailoverServiceSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
-	// TODO: write docs
 
-	HeadlessServiceName string `json:"headlessServiceName"`
-	ServiceName         string `json:"serviceName,omitempty"`
+	Service ServiceConfig `json:"service"`
+}
+
+// ServiceConfig defines the configuration for the services which are managed by the FailoverService.
+type ServiceConfig struct {
+	Name   string `json:"name"`
+	Suffix string `json:"suffix,omitempty"`
 }
 
 // FailoverServiceStatus defines the observed state of FailoverService
 type FailoverServiceStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
-	// TODO: write docs
 
 	ActiveTarget   string             `json:"activeTarget,omitempty"`
 	LastTransition metav1.Time        `json:"lastTransition,omitempty"`
