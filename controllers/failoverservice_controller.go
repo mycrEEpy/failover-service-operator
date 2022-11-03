@@ -102,14 +102,15 @@ func (r *FailoverServiceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	original := fos.DeepCopy()
 
-	if len(fos.Status.ActiveTarget) > 0 {
-		nextTarget, err := r.reconcileActiveTarget(ctx, fos)
+	// Initial setup for the service
+	if len(fos.Status.ActiveTarget) == 0 {
+		svc, err := r.createNewService(ctx, fos)
 		if err != nil {
 			apiMeta.SetStatusCondition(&fos.Status.Conditions, metav1.Condition{
 				Type:    ConditionTypeReady,
 				Status:  metav1.ConditionFalse,
 				Reason:  ConditionReasonFailed,
-				Message: fmt.Sprintf("failed to reconcile active target: %s", err),
+				Message: fmt.Sprintf("failed to create new service: %s", err),
 			})
 
 			err = r.Status().Patch(ctx, &fos, client.MergeFrom(original))
@@ -120,20 +121,33 @@ func (r *FailoverServiceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			return ctrl.Result{RequeueAfter: time.Second * 10}, err
 		}
 
-		if nextTarget != fos.Status.ActiveTarget {
-			logger.Info("new target", "target", nextTarget)
+		err = r.updateServiceSelector(ctx, fos)
+		if err != nil {
+			apiMeta.SetStatusCondition(&fos.Status.Conditions, metav1.Condition{
+				Type:    ConditionTypeReady,
+				Status:  metav1.ConditionFalse,
+				Reason:  ConditionReasonFailed,
+				Message: fmt.Sprintf("failed to update service selector: %s", err),
+			})
+
+			err = r.Status().Patch(ctx, &fos, client.MergeFrom(original))
+			if err != nil {
+				logger.Error(err, "status update failed")
+			}
+
+			return ctrl.Result{RequeueAfter: time.Second * 10}, err
 		}
 
-		return ctrl.Result{}, nil
+		logger.Info("service successfully initialized", "serviceName", svc.Name)
 	}
 
-	svc, err := r.createNewService(ctx, fos)
+	nextTarget, err := r.reconcileActiveTarget(ctx, fos)
 	if err != nil {
 		apiMeta.SetStatusCondition(&fos.Status.Conditions, metav1.Condition{
 			Type:    ConditionTypeReady,
 			Status:  metav1.ConditionFalse,
 			Reason:  ConditionReasonFailed,
-			Message: fmt.Sprintf("failed to create new service: %s", err),
+			Message: fmt.Sprintf("failed to reconcile active target: %s", err),
 		})
 
 		err = r.Status().Patch(ctx, &fos, client.MergeFrom(original))
@@ -144,7 +158,9 @@ func (r *FailoverServiceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{RequeueAfter: time.Second * 10}, err
 	}
 
-	logger.Info("new service created", "serviceNamespace", svc.Namespace, "serviceName", svc.Name)
+	if nextTarget != fos.Status.ActiveTarget {
+		logger.Info("new target", "target", nextTarget)
+	}
 
 	if !apiMeta.IsStatusConditionTrue(fos.Status.Conditions, ConditionTypeReady) {
 		apiMeta.SetStatusCondition(&fos.Status.Conditions, metav1.Condition{
@@ -158,8 +174,6 @@ func (r *FailoverServiceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			logger.Error(err, "status patch failed")
 			return ctrl.Result{RequeueAfter: time.Second * 10}, err
 		}
-
-		return ctrl.Result{}, nil
 	}
 
 	return ctrl.Result{}, nil
@@ -231,17 +245,9 @@ func (r *FailoverServiceReconciler) runBusyLoop(ctx context.Context, interval ti
 }
 
 func (r *FailoverServiceReconciler) createNewService(ctx context.Context, fos failoverv1alpha1.FailoverService) (*corev1.Service, error) {
+	logger := log.FromContext(ctx)
+
 	hls, err := r.getHeadlessService(ctx, fos.Namespace, fos.Spec.Service.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	eps, err := r.getEndpointSliceFromService(ctx, fos.Namespace, fos.Spec.Service.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	target, err := r.findNextTarget(eps)
 	if err != nil {
 		return nil, err
 	}
@@ -265,29 +271,35 @@ func (r *FailoverServiceReconciler) createNewService(ctx context.Context, fos fa
 		Spec: corev1.ServiceSpec{
 			Type:  corev1.ServiceTypeClusterIP,
 			Ports: hls.Spec.Ports,
-			Selector: map[string]string{
-				StatefulsetPodNameLabel: target,
-			},
 		},
 	}
 
 	err = r.Create(ctx, &svc)
 	if err != nil {
+		if kubeErrors.IsAlreadyExists(err) {
+			return &svc, nil
+		}
+
 		return nil, err
 	}
 
-	original := fos.DeepCopy()
-
-	fos.Status.ActiveTarget = target
-	fos.Status.LastTransition = metav1.Now()
-
-	// TODO: if the patch fails we have a deadlock because the service is already created and no active target has been set
-	err = r.Status().Patch(ctx, &fos, client.MergeFrom(original))
-	if err != nil {
-		return nil, err
-	}
+	logger.Info("new service created", "serviceName", svc.Name)
 
 	return &svc, nil
+}
+
+func (r *FailoverServiceReconciler) updateServiceSelector(ctx context.Context, fos failoverv1alpha1.FailoverService) error {
+	eps, err := r.getEndpointSliceFromService(ctx, fos.Namespace, fos.Spec.Service.Name)
+	if err != nil {
+		return err
+	}
+
+	target, err := r.findNextTarget(eps)
+	if err != nil {
+		return err
+	}
+
+	return r.setTarget(ctx, fos, target)
 }
 
 func (r *FailoverServiceReconciler) getHeadlessService(ctx context.Context, ns, hls string) (corev1.Service, error) {
