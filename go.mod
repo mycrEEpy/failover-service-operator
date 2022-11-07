@@ -3,7 +3,7 @@ module github.com/mycreepy/failover-service-operator
 go 1.19
 
 require (
-	github.com/onsi/ginkgo/v2 v2.4.0
+	github.com/onsi/ginkgo/v2 v2.5.0
 	github.com/onsi/gomega v1.24.0
 	k8s.io/api v0.25.3
 	k8s.io/apimachinery v0.25.3
