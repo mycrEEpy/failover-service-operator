@@ -1,10 +1,13 @@
 # Failover Service Operator
-// TODO(user): Add simple overview of use/purpose
+
+Kubernetes operator for providing active-passive services on top of headless services for statefulsets.
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+
+tba
 
 ## Getting Started
+
 1. Generate the operator manifest:
 
 ```sh
@@ -24,15 +27,18 @@ kubectl apply -k config/samples/
 ```
 
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+
+tba
 
 ### How it works
+
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 
 It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/) 
 which provides a reconcile function responsible for synchronizing resources untile the desired state is reached on the cluster 
 
 ### Test It Out
+
 1. Install the CRDs into the cluster:
 
 ```sh
@@ -48,6 +54,7 @@ make run
 **NOTE:** You can also run this in one step by running: `make install run`
 
 ### Modifying the API definitions
+
 If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
 
 ```sh
