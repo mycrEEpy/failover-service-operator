@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: ghcr.io/mycreepy/failover-service-operator
-  newTag: v0.5.1
+  newTag: 0.5.2
