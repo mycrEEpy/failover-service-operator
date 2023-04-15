@@ -40,9 +40,10 @@ type ServiceConfig struct {
 type FailoverServiceStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
-	ActiveTarget   string             `json:"activeTarget,omitempty"`
-	LastTransition metav1.Time        `json:"lastTransition,omitempty"`
-	Conditions     []metav1.Condition `json:"conditions,omitempty"`
+	ActiveTarget     string             `json:"activeTarget,omitempty"`
+	AvailableTargets int                `json:"availableTargets,omitempty"`
+	LastTransition   metav1.Time        `json:"lastTransition,omitempty"`
+	Conditions       []metav1.Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -50,6 +51,7 @@ type FailoverServiceStatus struct {
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 //+kubebuilder:printcolumn:name="target",type=string,JSONPath=`.status.activeTarget`
+//+kubebuilder:printcolumn:name="available",type=string,JSONPath=`.status.availableTargets`
 //+kubebuilder:printcolumn:name="transition",type=date,JSONPath=`.status.lastTransition`
 //+kubebuilder:printcolumn:name="age",type=date,JSONPath=`.metadata.creationTimestamp`
 

@@ -324,6 +324,20 @@ func (r *FailoverServiceReconciler) reconcileActiveTarget(ctx context.Context, f
 		return "", err
 	}
 
+	var availableTargets int
+	for _, ep := range eps.Endpoints {
+		if isEndpointReady(ep) {
+			availableTargets++
+		}
+	}
+
+	if availableTargets != fos.Status.AvailableTargets {
+		err = r.setAvailableTargets(ctx, fos, availableTargets)
+		if err != nil {
+			return "", err
+		}
+	}
+
 	if r.isActiveTargetReady(fos.Status.ActiveTarget, eps) {
 		return fos.Status.ActiveTarget, nil
 	}
@@ -430,6 +444,14 @@ func (r *FailoverServiceReconciler) setTarget(ctx context.Context, fos failoverv
 
 	fos.Status.ActiveTarget = target
 	fos.Status.LastTransition = metav1.Now()
+
+	return r.Status().Patch(ctx, &fos, client.MergeFrom(originalFos))
+}
+
+func (r *FailoverServiceReconciler) setAvailableTargets(ctx context.Context, fos failoverv1alpha1.FailoverService, available int) error {
+	originalFos := fos.DeepCopy()
+
+	fos.Status.AvailableTargets = available
 
 	return r.Status().Patch(ctx, &fos, client.MergeFrom(originalFos))
 }
