@@ -13,12 +13,12 @@
     {
       "matchPackagePatterns": ["kubernetes/kubernetes"],
       "groupName": "kubernetes",
-      "allowedVersions": "<=1.25.0"
+      "allowedVersions": "<=1.26.0"
     },
     {
       "matchPackagePatterns": ["k8s.io/.*"],
       "groupName": "k8s.io",
-      "allowedVersions": "<=0.25"
+      "allowedVersions": "<=0.26"
     }
   ],
   "regexManagers": [
