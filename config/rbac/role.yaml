@@ -19,6 +19,7 @@ rules:
   - endpointslices
   verbs:
   - list
+  - watch
 - apiGroups:
   - mycreepy.github.io
   resources:

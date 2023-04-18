@@ -57,7 +57,7 @@ type FailoverServiceReconciler struct {
 //+kubebuilder:rbac:groups=mycreepy.github.io,resources=failoverservices/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=mycreepy.github.io,resources=failoverservices/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=services,verbs=get;create;patch
-//+kubebuilder:rbac:groups=discovery.k8s.io,resources=endpointslices,verbs=list
+//+kubebuilder:rbac:groups=discovery.k8s.io,resources=endpointslices,verbs=list;watch
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *FailoverServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
