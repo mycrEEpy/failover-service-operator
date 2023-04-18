@@ -8,22 +8,31 @@ tba
 
 ## Getting Started
 
-1. Generate the operator manifest:
+1. Deploy the operator:
 
 ```sh
-make kustomize-build
+kubectl apply -f deploy/deploy.yml
 ```
 
-2. Deploy the operator:
-
-```sh
-kubectl apply -f dist/deploy.yaml
-```
-
-3. Optionally deploy the samples:
+2. Optionally deploy the samples:
 
 ```sh
 kubectl apply -k config/samples/
+```
+
+or
+
+3. Create your own FailoverServices:
+
+```yaml
+apiVersion: mycreepy.github.io/v1alpha1
+kind: FailoverService
+metadata:
+  name: example-failover-service
+  namespace: default
+spec:
+  service:
+    name: example-headless-service
 ```
 
 ## Contributing

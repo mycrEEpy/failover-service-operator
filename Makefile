@@ -165,6 +165,11 @@ kustomize-build: manifests kustomize
 	mkdir -p dist
 	$(KUSTOMIZE) build config/default > ${MANIFEST_FILE}
 
+.PHONY: kustomize-release
+kustomize-release: kustomize-build
+	mkdir -p deploy
+	cp dist/deploy.yaml deploy/deploy.yml
+
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
