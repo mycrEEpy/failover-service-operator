@@ -2,6 +2,7 @@ apiVersion: mycreepy.github.io/v1alpha1
 kind: FailoverService
 metadata:
   name: sample
+  namespace: default
 spec:
   service:
     name: sample
