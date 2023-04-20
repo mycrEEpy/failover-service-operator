@@ -7,7 +7,7 @@
     "gomodTidy"
   ],
   "kubernetes": {
-    "fileMatch": ["config/.+\\.yaml$"]
+    "fileMatch": ["config/.+\\.yaml$", "deploy/.+\\.yml$"]
   },
   "packageRules": [
     {
