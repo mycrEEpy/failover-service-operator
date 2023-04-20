@@ -208,12 +208,15 @@ rules:
   verbs:
   - create
   - get
+  - list
   - patch
+  - watch
 - apiGroups:
   - discovery.k8s.io
   resources:
   - endpointslices
   verbs:
+  - get
   - list
   - watch
 - apiGroups:
@@ -308,7 +311,7 @@ spec:
         - --leader-elect
         command:
         - /fos-manager
-        image: ghcr.io/mycreepy/failover-service-operator:0.6.1
+        image: ghcr.io/mycreepy/failover-service-operator:0.6.2
         livenessProbe:
           httpGet:
             path: /healthz
