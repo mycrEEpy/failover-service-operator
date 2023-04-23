@@ -9,3 +9,5 @@ resources:
 - role_binding.yaml
 - leader_election_role.yaml
 - leader_election_role_binding.yaml
+- failoverservice_editor_role.yaml
+- failoverservice_viewer_role.yaml
