@@ -12,13 +12,17 @@ rules:
   verbs:
   - create
   - get
+  - list
   - patch
+  - watch
 - apiGroups:
   - discovery.k8s.io
   resources:
   - endpointslices
   verbs:
+  - get
   - list
+  - watch
 - apiGroups:
   - mycreepy.github.io
   resources:

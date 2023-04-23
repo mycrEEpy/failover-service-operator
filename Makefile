@@ -49,7 +49,7 @@ endif
 # Image URL to use all building/pushing image targets
 IMG ?= ghcr.io/mycreepy/failover-service-operator:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.25.0
+ENVTEST_K8S_VERSION = 1.26.0
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -165,6 +165,11 @@ kustomize-build: manifests kustomize
 	mkdir -p dist
 	$(KUSTOMIZE) build config/default > ${MANIFEST_FILE}
 
+.PHONY: kustomize-release
+kustomize-release: kustomize-build
+	mkdir -p deploy
+	cp dist/deploy.yaml deploy/deploy.yml
+
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
@@ -196,7 +201,7 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.0.1
-CONTROLLER_TOOLS_VERSION ?= v0.11.3
+CONTROLLER_TOOLS_VERSION ?= v0.11.4
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
