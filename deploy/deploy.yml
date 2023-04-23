@@ -198,6 +198,55 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+  name: failoverservice-editor-role
+rules:
+- apiGroups:
+  - mycreepy.github.io
+  resources:
+  - failoverservices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - mycreepy.github.io
+  resources:
+  - failoverservices/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+  name: failoverservice-viewer-role
+rules:
+- apiGroups:
+  - mycreepy.github.io
+  resources:
+  - failoverservices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - mycreepy.github.io
+  resources:
+  - failoverservices/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
   creationTimestamp: null
   name: fos-manager
 rules:

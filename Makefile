@@ -166,7 +166,7 @@ kustomize-build: manifests kustomize
 	$(KUSTOMIZE) build config/default > ${MANIFEST_FILE}
 
 .PHONY: kustomize-release
-kustomize-release: kustomize-build
+kustomize-release: kustomize-build ## Generate the deployment manifest with kustomize.
 	mkdir -p deploy
 	cp dist/deploy.yaml deploy/deploy.yml
 
