@@ -1,6 +1,6 @@
 module github.com/mycreepy/failover-service-operator
 
-go 1.21.6
+go 1.21.7
 
 require (
 	github.com/onsi/ginkgo/v2 v2.15.0
