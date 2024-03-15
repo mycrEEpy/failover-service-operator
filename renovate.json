@@ -11,6 +11,10 @@
   },
   "packageRules": [
     {
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "automerge": true
+    },
+    {
       "matchPackagePatterns": ["k8s.io/.*"],
       "groupName": "k8s.io"
     }
