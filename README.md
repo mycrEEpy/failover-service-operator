@@ -1,5 +1,8 @@
 # Failover Service Operator
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/mycreepy/failover-service-operator)](https://goreportcard.com/report/github.com/mycreepy/failover-service-operator)
+[![Known Vulnerabilities](https://snyk.io/test/github/mycrEEpy/failover-service-operator/badge.svg)](https://snyk.io/test/github/mycrEEpy/failover-service-operator)
+
 Kubernetes operator for providing active-passive services on top of headless services for statefulsets.
 
 ## Description
