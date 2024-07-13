@@ -1,6 +1,6 @@
 dependencies:
-  go.dev: 1.22.2
-  goreleaser.com: 1.25.1
-  golangci-lint.run: 1.58.0
+  go.dev: 1.22.5
+  goreleaser.com: 2.0.1
+  golangci-lint.run: 1.59.1
   gnu.org/make: 4.3.0
-  operatorframework.io/operator-sdk: 1.34.1
+  operatorframework.io/operator-sdk: 1.35.0
