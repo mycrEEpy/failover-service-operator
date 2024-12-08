@@ -7,36 +7,60 @@
     "gomodTidy"
   ],
   "kubernetes": {
-    "fileMatch": ["config/.+\\.yaml$", "deploy/.+\\.yml$"]
+    "fileMatch": [
+      "config/.+\\.yaml$",
+      "deploy/.+\\.yml$"
+    ]
   },
   "packageRules": [
     {
-      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "matchUpdateTypes": [
+        "patch",
+        "pin",
+        "digest"
+      ],
       "automerge": true
     },
     {
-      "matchPackagePatterns": ["k8s.io/.*"],
-      "groupName": "k8s.io"
+      "groupName": "k8s.io",
+      "matchPackageNames": [
+        "/k8s.io/.*/"
+      ]
     }
   ],
-  "regexManagers": [
+  "customManagers": [
     {
-      "fileMatch": ["^Makefile$"],
-      "matchStrings": ["ENVTEST_K8S_VERSION = (?<currentValue>.*?)\\n"],
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "ENVTEST_K8S_VERSION = (?<currentValue>.*?)\\n"
+      ],
       "extractVersionTemplate": "^v(?<version>.*)$",
       "depNameTemplate": "kubernetes/kubernetes",
       "datasourceTemplate": "github-releases"
     },
     {
-      "fileMatch": ["^Makefile$"],
-      "matchStrings": ["KUSTOMIZE_VERSION \\?= (?<currentValue>.*?)\\n"],
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "KUSTOMIZE_VERSION \\?= (?<currentValue>.*?)\\n"
+      ],
       "extractVersionTemplate": "^kustomize/(?<version>.*)$",
       "depNameTemplate": "kubernetes-sigs/kustomize",
       "datasourceTemplate": "github-releases"
     },
     {
-      "fileMatch": ["^Makefile$"],
-      "matchStrings": ["CONTROLLER_TOOLS_VERSION \\?= (?<currentValue>.*?)\\n"],
+      "customType": "regex",
+      "fileMatch": [
+        "^Makefile$"
+      ],
+      "matchStrings": [
+        "CONTROLLER_TOOLS_VERSION \\?= (?<currentValue>.*?)\\n"
+      ],
       "depNameTemplate": "kubernetes-sigs/controller-tools",
       "datasourceTemplate": "github-releases"
     }
