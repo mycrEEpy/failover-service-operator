@@ -64,8 +64,8 @@ func main() {
 	var probeAddr string
 	var interval time.Duration
 
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.BoolVar(&secureMetrics, "metrics-secure", false, "Enable authentication for metric endpoint")
+	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. Set to 0 to disable the metric endpoint.")
+	flag.BoolVar(&secureMetrics, "metrics-secure", true, "Enable authentication for metric endpoint")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
