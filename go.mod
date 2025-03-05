@@ -2,7 +2,7 @@ module github.com/mycreepy/failover-service-operator
 
 go 1.23.0
 
-toolchain go1.24.0
+toolchain go1.24.1
 
 require (
 	github.com/onsi/ginkgo/v2 v2.22.2
