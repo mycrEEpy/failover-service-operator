@@ -370,7 +370,7 @@ spec:
         - --leader-elect
         command:
         - /fos-manager
-        image: ghcr.io/mycreepy/failover-service-operator:0.8.1
+        image: ghcr.io/mycreepy/failover-service-operator:0.8.2
         livenessProbe:
           httpGet:
             path: /healthz
